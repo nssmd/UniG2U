@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run the full CoT / Visual CoT evaluation suite sequentially.
-# Usage: bash script/eval_all_cot.sh --model bagel_visual_cot --model_args "pretrained=ByteDance-Seed/BAGEL-7B-MoT,save_intermediate=true"
+# Usage: bash script/eval_all_cot.sh --model bagel_visual_cot --model_args "pretrained=ByteDance-Seed/BAGEL-7B-MoT,save_intermediate=true,device_map=cuda:0"
 
 set -e
 
@@ -25,11 +25,7 @@ mkdir -p "$OUTPUT_BASE"
 
 # Force single-node, single-process distributed settings to avoid
 # accidentally attaching to an external distributed environment.
-export WORLD_SIZE=1
-export RANK=0
-export LOCAL_RANK=0
-export MASTER_ADDR=127.0.0.1
-export MASTER_PORT=29314
+
 
 TASKS=(
     auxsolidmath_easy_visual_cot
@@ -37,7 +33,11 @@ TASKS=(
     geometry3k_visual_cot
     babyvision_cot
     illusionbench_arshia_visual_cot_split
-    mmsi_cot
+    mmsi_attribute_appr_visual_cot
+    mmsi_attribute_meas_visual_cot
+    mmsi_motion_cam_visual_cot
+    mmsi_motion_obj_visual_cot
+    mmsi_msr_visual_cot
     phyx_cot
     realunify_cot
     uni_mmmu_cot
@@ -55,7 +55,8 @@ for TASK in "${TASKS[@]}"; do
         --tasks "$TASK" \
         --batch_size 1 \
         --log_samples \
-        --output_path "${OUTPUT_BASE}/${TASK}"
+        --output_path "${OUTPUT_BASE}/${TASK}" \
+        --limit 1
     echo "Done: $TASK"
     echo
 done

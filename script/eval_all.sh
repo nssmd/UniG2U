@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run the full standard evaluation suite sequentially.
-# Usage: bash script/eval_all.sh --model qwen2_5_vl --model_args "pretrained=Qwen/Qwen2.5-VL-3B-Instruct"
-
+# Usage: bash script/eval_all.sh --model qwen2_5_vl --model_args "pretrained=Qwen/Qwen2.5-VL-3B-Instruct,device_map=cuda:0"
+#bash script/eval_all.sh --model bagel --model_args "pretrained=ByteDance-Seed/BAGEL-7B-MoT,save_intermediate=true,device_map=cuda:0"
 set -e
 
 MODEL=""
@@ -35,7 +35,11 @@ TASKS=(
     geometry3k
     babyvision
     illusionbench_arshia_test
-    mmsi
+    mmsi_attribute_appr
+    mmsi_attribute_meas
+    mmsi_motion_cam
+    mmsi_motion_obj
+    mmsi_msr
     phyx_simple
     realunify
     uni_mmmu
@@ -53,7 +57,8 @@ for TASK in "${TASKS[@]}"; do
         --tasks "$TASK" \
         --batch_size 1 \
         --log_samples \
-        --output_path "${OUTPUT_BASE}/${TASK}"
+        --output_path "${OUTPUT_BASE}/${TASK}" 
+        
     echo "Done: $TASK"
     echo
 done
