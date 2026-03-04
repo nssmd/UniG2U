@@ -4,6 +4,16 @@
 
 # The Evaluation Suite of Large Multimodal Models 
 
+> UniG2U is built on top of `lmms-eval` and extends it with additional
+> benchmark tasks, model integrations, Visual CoT pipelines, and one-shot
+> evaluation scripts for our benchmark workflow.
+
+UniG2U repository: https://github.com/nssmd/UniG2U.git  
+Upstream `lmms-eval`: https://github.com/EvolvingLMMs-Lab/lmms-eval
+
+The sections below retain the original `lmms-eval` project overview and usage
+context, followed by UniG2U-specific additions.
+
 [![PyPI](https://img.shields.io/pypi/v/lmms-eval)](https://pypi.org/project/lmms-eval)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/lmms-eval)
 [![GitHub contributors](https://img.shields.io/github/contributors/EvolvingLMMs-Lab/lmms-eval)](https://github.com/EvolvingLMMs-Lab/lmms-eval/graphs/contributors)
@@ -67,8 +77,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 For development with consistent environment:
 ```bash
-git clone https://github.com/EvolvingLMMs-Lab/lmms-eval
-cd lmms-eval
+git clone https://github.com/nssmd/UniG2U.git
+cd UniG2U
 # Recommend
 uv pip install -e ".[all]"
 # If you want to use uv sync
@@ -93,7 +103,7 @@ uv venv eval
 uv venv --python 3.12
 source eval/bin/activate
 # You might need to add and include your own task yaml if using this installation
-uv pip install git+https://github.com/EvolvingLMMs-Lab/lmms-eval.git
+uv pip install git+https://github.com/nssmd/UniG2U.git
 ```
 
 <details>
@@ -234,6 +244,146 @@ python3 -m pip install numpy==1.26;
 # Someties sentencepiece are required for tokenizer to work
 python3 -m pip install sentencepiece;
 ```
+
+## UniG2U Extensions
+
+This repository is based on
+[`lmms-eval`](https://github.com/EvolvingLMMs-Lab/lmms-eval) and extends it for
+our benchmark and model evaluation workflow.
+
+Compared with upstream `lmms-eval`, UniG2U adds:
+
+- Custom benchmark tasks under `lmms_eval/tasks`, including the UniG2U suite,
+  benchmark wrappers, and prompt / scoring utilities for our task variants
+- Additional model integrations under `lmms_eval/models`, including custom
+  multimodal backends and Visual CoT style model wrappers
+- One-shot benchmark scripts under `script/` for running the full UniG2U task
+  suite and generating final aggregate reports automatically
+- Benchmark aggregation logic in `script/aggregate_results.py` for computing:
+  - task summaries
+  - category-level scores
+  - benchmark-level `overall`
+
+The UniG2U benchmark coverage in this repository includes task families such as
+AuxSolidMath-Easy, ChartQA, Geometry3K, BabyVision, IllusionBench, MMSI-Bench,
+PhyX, RealUnify, Uni-MMMU, VSP, and VisualPuzzles, together with their CoT /
+Visual CoT variants where applicable.
+
+Our added or customized model integrations include examples such as
+`uniworld`, `uniworld_visual_cot`, `emu3`, `emu3_visual_cot`, `mio`,
+`qwen_image_edit`, and `qwen_image_edit_visual_cot`, along with several other
+Visual CoT wrappers registered in `lmms_eval/models`.
+
+The main directories to know are:
+
+- `lmms_eval/tasks/`: benchmark task definitions, YAML configs, prompt and
+  metric utilities
+- `lmms_eval/models/`: model registry plus our custom model implementations
+- `script/eval_all.sh`: one-shot standard benchmark runner
+- `script/eval_all_cot.sh`: one-shot CoT / Visual CoT benchmark runner
+- `script/aggregate_results.py`: post-processing and benchmark aggregation
+- `script/README.md`: focused documentation for the one-shot scripts
+
+Some of our custom models depend on external repositories or model-specific
+code. For example:
+
+- `uniworld` / `uniworld_visual_cot` expect the UniWorld codebase under
+  `UniWorld/UniWorld-V1`
+- `mio` expects the MIO repository under `MIO/`
+
+If you use those models, make sure their extra dependencies and external code
+are prepared before running evaluation.
+
+## UniG2U Benchmark Usage
+
+The easiest way to run our benchmark is through the scripts in `script/`.
+These scripts provide a stable interface on top of `lmms_eval` and run the full
+task suite sequentially.
+
+Test script paths:
+
+- `script/eval_all.sh`
+- `script/eval_all_cot.sh`
+
+Recommended usage from the repository root:
+
+```bash
+bash script/eval_all.sh \
+  --model qwen2_5_vl \
+  --model_args "pretrained=Qwen/Qwen2.5-VL-3B-Instruct"
+```
+
+For CoT / Visual CoT models:
+
+```bash
+bash script/eval_all_cot.sh \
+  --model bagel_visual_cot \
+  --model_args "pretrained=ByteDance-Seed/BAGEL-7B-MoT,save_intermediate=true"
+```
+
+Both scripts:
+
+- run the predefined UniG2U task list sequentially
+- always use `--batch_size 1`
+- always enable `--log_samples`
+- stop on the first failed task
+- automatically aggregate final results after all tasks finish
+
+Under the hood, each task is executed through:
+
+```bash
+uv run python -m lmms_eval \
+  --model <model_name> \
+  --model_args "<model_args>" \
+  --tasks <task_name> \
+  --batch_size 1 \
+  --log_samples \
+  --output_path ./logs/<model_name>/<task_name>
+```
+
+## UniG2U Runtime Notes
+
+Before running the UniG2U scripts, make sure:
+
+- `uv` is installed and available in your shell
+- this repository has been installed with `uv pip install -e ".[all]"`
+- the selected model name is registered in `lmms_eval/models`
+- model weights and datasets needed by that task are available in your local
+  runtime
+
+For local Hugging Face models on GPU, a common pattern is:
+
+```bash
+uv run python -m lmms_eval \
+  --model qwen2_5_vl \
+  --model_args "pretrained=Qwen/Qwen2.5-VL-3B-Instruct,device_map=auto"
+```
+
+## UniG2U Outputs
+
+By default, benchmark runs are written under:
+
+```text
+logs/<model_name>/
+```
+
+After the scripts finish, UniG2U writes:
+
+- `logs/<model_name>/summary.json`: task-level summary extracted from raw
+  `results*.json`
+- `logs/<model_name>/benchmark_summary.json`: benchmark-level aggregation with
+  `overall`, `category_overall`, and fine-grained metric details
+
+`benchmark_summary.json` is the main file for reporting final UniG2U results.
+It includes:
+
+- `overall`: sample-weighted score across the full benchmark
+- `category_overall`: sample-weighted score for each category
+- `fine_grained`: selected metric, score, sample count, and category for each
+  fine-grained subtask
+
+For more details on the one-shot scripts, task lists, and output layout, see
+`script/README.md`.
 
 ## Add Customized Model and Dataset
 

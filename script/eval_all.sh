@@ -23,8 +23,11 @@ fi
 OUTPUT_BASE="./logs/${MODEL}"
 mkdir -p "$OUTPUT_BASE"
 
-# Force single-node, single-process distributed settings to avoid
-# accidentally attaching to an external distributed environment.
+export WORLD_SIZE=1
+export RANK=0
+export LOCAL_RANK=0
+export MASTER_ADDR=127.0.0.1
+export MASTER_PORT=29314
 
 TASKS=(
     auxsolidmath_easy
